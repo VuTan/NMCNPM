@@ -1,29 +1,52 @@
 package main.gui;
 
-import main.game.*;
-import main.game.Settings;
-
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.swing.*;
+
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+
+import main.game.BoardState;
+import main.game.Game;
+import main.game.MoveFeedback;
+import main.game.Piece;
+import main.game.Player;
+import main.game.Settings;
 
 public class GUI extends JFrame {
 
 	private Game game;
 	private ArrayList<BoardState> possibleMoves;
-	private Square[] squares;
+	private SquarePanel[] squares;
 	private JPanel checkerboardPanel;
 	private JPanel contentPane;
 	private JTextArea textBox;
 	private BoardState hintMove;
 
 	private List<Integer> helpMoves;
+
 	public GUI() {
 		start();
 	}
@@ -31,21 +54,26 @@ public class GUI extends JFrame {
 	private void start() {
 
 		settingsPopup();
-		game = new Game(this); //initial game
+		game = new Game();
 		possibleMoves = new ArrayList<>();
+
 		hintMove = null;
+
+		setup();
+
+		if (main.gui.Settings.hintMode) {
+			onHintClick();
+		}
 	}
 
-	
-	//
 	private void settingsPopup() {
-		
+
 		JPanel panel = new JPanel(new GridLayout(8, 1));
 
 		JLabel text1 = new JLabel("Thiết lập chế độ chơi", 10);
 
 		JRadioButton forceTakesButton = new JRadioButton("Force Takes");
-		
+
 		forceTakesButton.setSelected(Settings.FORCETAKES);
 
 		ButtonGroup buttonGroup = new ButtonGroup();
@@ -55,14 +83,13 @@ public class GUI extends JFrame {
 		buttonGroup.add(aiRadioButton);
 		aiRadioButton.setSelected(Settings.FIRSTMOVE == Player.AI);
 		humanFirstRadioButton.setSelected(Settings.FIRSTMOVE == Player.HUMAN);
-		
+
 		panel.add(text1);
 
 		panel.add(forceTakesButton);
 		panel.add(humanFirstRadioButton);
 		panel.add(aiRadioButton);
 
-		
 		JLabel text2 = new JLabel("Thiết lập độ khó", 10);
 		JRadioButton minimaxRadioButton = new JRadioButton("Minimax");
 		JRadioButton alphabetaRadioButton = new JRadioButton("Alphabeta");
@@ -79,25 +106,13 @@ public class GUI extends JFrame {
 				JOptionPane.QUESTION_MESSAGE);
 
 		if (result == JOptionPane.OK_OPTION) {
-			System.out.println("AI depth = " + Settings.AI_DEPTH);
 			Settings.FIRSTMOVE = humanFirstRadioButton.isSelected() ? Player.HUMAN : Player.AI;
 			Settings.FORCETAKES = forceTakesButton.isSelected();
-			
-			if (minimaxRadioButton.isSelected()) {
-				System.out.println("Chế độ chơi của người chơi: Minimax");
-				Settings.SELECTED_ALGORITHM = "minimax";
-			} else if (alphabetaRadioButton.isSelected()) {
-				System.out.println("Chế độ chơi của người chơi: Alpha-Beta");
-				Settings.SELECTED_ALGORITHM1 = "alphabeta";
-			}
+
 		}
 	}
 
-
-
 	public void setup() {
-		
-		//
 		switch (Settings.FIRSTMOVE) {
 		case AI:
 			main.gui.Settings.AIcolour = Colour.WHITE;
@@ -106,7 +121,7 @@ public class GUI extends JFrame {
 			main.gui.Settings.AIcolour = Colour.BLACK;
 			break;
 		}
-	
+
 		setupMenuBar();
 		contentPane = new JPanel();
 		checkerboardPanel = new JPanel(new GridBagLayout());
@@ -121,15 +136,12 @@ public class GUI extends JFrame {
 		textBox.setWrapStyleWord(true);
 		textBox.setAutoscrolls(true);
 		textPanel.add(textBox);
-
+// cập nhật trạng thái bảng trò chơi
 		updateCheckerBoard();
 		updateText("");
 		this.pack();
 		this.setVisible(true);
 
-		if (Settings.FIRSTMOVE == Player.AI) {
-			aiMove();
-		}
 	}
 
 	private void updateText(String text) {
@@ -138,19 +150,20 @@ public class GUI extends JFrame {
 
 	private void updateCheckerBoard() {
 		checkerboardPanel.removeAll();
-		//--Huy
 		addPieces();
+
 		addSquares();
+
 		addGhostButtons();
 		checkerboardPanel.setVisible(true);
+
 		checkerboardPanel.repaint();
 		this.pack();
 		this.setVisible(true);
 	}
-	
-	//Chèn Square (Nền) vào bàn cờ --Huy
+
 	private void addSquares() {
-		squares = new Square[game.getState().NO_SQUARES];
+		squares = new SquarePanel[game.getState().NO_SQUARES];
 		int fromPos = -1;
 		int toPos = -1;
 		if (hintMove != null) {
@@ -159,13 +172,13 @@ public class GUI extends JFrame {
 		}
 
 		GridBagConstraints c = new GridBagConstraints();
-		
+
 		for (int i = 0; i < game.getState().NO_SQUARES; i++) {
 			c.gridx = i % game.getState().SIDE_LENGTH;
 			c.gridy = i / game.getState().SIDE_LENGTH;
- 
-			squares[i] = new Square(c.gridx, c.gridy);
-			
+
+			squares[i] = new SquarePanel(c.gridx, c.gridy);
+
 			if (i == fromPos) {
 				squares[i].setHighlighted();
 			}
@@ -182,21 +195,23 @@ public class GUI extends JFrame {
 		}
 	}
 
+	// thêm các quân cờ vào bảng cờ
 	private void addPieces() {
-	
-		GridBagConstraints c = new GridBagConstraints();
-		for (int i = 0; i < game.getState().NO_SQUARES; i++) {
 
+		GridBagConstraints c = new GridBagConstraints();
+		// duyệt qua từng ô
+		for (int i = 0; i < game.getState().NO_SQUARES; i++) {
+//Xác định vị trí của ô trong lưới
 			c.gridx = i % game.getState().SIDE_LENGTH;
 
 			c.gridy = i / game.getState().SIDE_LENGTH;
-		
+//Kiểm tra xem ô có quân cờ không
 			if (game.getState().getPiece(i) != null) {
-
+// lấy quân cờ đó và gán nó vào biến piece
 				Piece piece = game.getState().getPiece(i);
 
-				if (piece != null) { 
-				CheckerButton button = new CheckerButton(i, piece, this);
+				if (piece != null) {
+					CheckerButton button = new CheckerButton(i, piece, this);
 
 					button.addActionListener(new ActionListener() {
 						@Override
@@ -210,7 +225,6 @@ public class GUI extends JFrame {
 			}
 		}
 	}
-
 
 	private void addGhostButtons() {
 
@@ -320,8 +334,7 @@ public class GUI extends JFrame {
 		menuBar.add(helpMenu);
 		this.setJMenuBar(menuBar);
 	}
-	
-	
+
 	private void onRestartClick() {
 		Object[] options = { "Có", "Không", };
 		int n = JOptionPane.showOptionDialog(this, "Bạn có chắc là bạn muốn bắt đầu lại không?",
@@ -332,7 +345,6 @@ public class GUI extends JFrame {
 		}
 	}
 
-	
 	private void onExitClick() {
 		Object[] options = { "Có", "Không", };
 		int n = JOptionPane.showOptionDialog(this, "\nbạn có chắc bạn muốn thoát?", "Thoát trò chơi? ",
@@ -346,25 +358,27 @@ public class GUI extends JFrame {
 
 	private void onRulesClick() {
 
-		String message = "1. Chỉ được phép di chuyển trên các ô vuông màu tối, vì vậy các quân cờ luôn di chuyển theo đường chéo. <br /> <br /> " +
+		String message = "1. Chỉ được phép di chuyển trên các ô vuông màu tối, vì vậy các quân cờ luôn di chuyển theo đường chéo. <br /> <br /> "
+				+
 
 				"2. Một quân thực hiện một nước đi không bắt được quân địch chỉ có thể di chuyển một ô vuông. <br /> <br />"
 				+
 
-				"3. Một quân thực hiện một động tác bắt (một bước nhảy) nhảy qua một trong các quân của đối phương, hạ cánh theo một đường chéo thẳng ở phía bên kia. Chỉ có thể bắt được một quân trong một lần nhảy; tuy nhiên được phép nhảy nhiều lần trong một lượt. <br /> <br />" +
+				"3. Một quân thực hiện một động tác bắt (một bước nhảy) nhảy qua một trong các quân của đối phương, hạ cánh theo một đường chéo thẳng ở phía bên kia. Chỉ có thể bắt được một quân trong một lần nhảy; tuy nhiên được phép nhảy nhiều lần trong một lượt. <br /> <br />"
+				+
 
 				"4.Khi một quân cờ bị bắt, nó sẽ bị loại bỏ khỏi bảng. <br /> <br />"
-				+ "5. Nếu người chơi có thể bắt được thì không có lựa chọn nào khác; bước nhảy phải được thực hiện. Nếu có nhiều hơn một lần bắt, người chơi có thể tự do lựa chọn hướng đi của mình. <br /> <br />" +
+				+ "5. Nếu người chơi có thể bắt được thì không có lựa chọn nào khác; bước nhảy phải được thực hiện. Nếu có nhiều hơn một lần bắt, người chơi có thể tự do lựa chọn hướng đi của mình. <br /> <br />"
+				+
 
 				"6. Khi một quân cờ đến hàng xa nhất tính từ người chơi điều khiển quân cờ đó, quân cờ đó sẽ được trao vương miện và trở thành vua. <br /> <br />"
 				+ "7. Các vị vua di chuyển như quân nhưng có thể di chuyển cả về phía trước và phía sau. <br /> <br />"
 				+ "8. Vua có thể kết hợp các bước nhảy theo nhiều hướng, tiến và lùi trong cùng một lượt. Các quân đơn lẻ có thể chuyển hướng theo đường chéo trong một lượt bắt nhiều lần, nhưng phải luôn tiến về phía trước (về phía đối thủ).";
 
-		JOptionPane.showMessageDialog(this, "<html><body><p style='width: 400px'>" + message + "</p></body></html>",
+		JOptionPane.showMessageDialog(this, "<html><body><p style='width: 400px;'>" + message + "</p></body></html>",
 				"", JOptionPane.INFORMATION_MESSAGE);
 	}
-	
-	
+
 	private void onUndoClick() {
 		game.undo();
 		updateCheckerBoard();
@@ -372,43 +386,41 @@ public class GUI extends JFrame {
 			onHintClick();
 		}
 	}
-	
+
 	private void onHintClick() {
 		if (!game.isGameOver()) {
 
-			AI ai = new AI(7, Player.HUMAN);
 			helpMoves = null;
 
-			hintMove = ai.move(this.game.getState(), Player.HUMAN, "");
 			updateCheckerBoard();
 		}
 	}
+
 	/***************************************************************/
 	/*********************** ON CLICK METHODS **********************/
-	
+
 	public void onMouseRelease(int position, int dx, int dy) {
 
 		MoveFeedback feedback = game.playerMove(position, dx, dy);
-		
+
 		if (feedback == MoveFeedback.SUCCESS) {
 			updateCheckerBoard();
 
-			aiMove();
 		} else {
-		
+
 			updateCheckerBoard();
 			System.out.println(feedback.toString());
 		}
 	}
 
-	
 	private void onHelpMovablesClick() {
 		hintMove = null;
 
 		helpMoves = game.getState().getSuccessors().stream().map(x -> x.getFromPos()).collect(Collectors.toList());
 		updateCheckerBoard();
 	}
-		private void onHelpModeClick() {
+
+	private void onHelpModeClick() {
 		main.gui.Settings.helpMode = !main.gui.Settings.helpMode;
 		System.out.println("Chế độ trợ giúp: " + main.gui.Settings.helpMode);
 	}
@@ -419,15 +431,16 @@ public class GUI extends JFrame {
 		onHintClick();
 	}
 
+	// Xử lý các sự kiện được kích hoạt khi người dùng nhấp vào các quân cờ
 	private void onPieceClick(ActionEvent actionEvent) {
 
-		if (game.getTurn() == Player.HUMAN) {
+		if (game.getTurn() == Player.HUMAN || game.getTurn() == Player.AI) {
 
 			CheckerButton button = (CheckerButton) actionEvent.getSource();
 			int pos = button.getPosition();
 
-			if (button.getPiece().getPlayer() == Player.HUMAN) {
-
+			if (button.getPiece().getPlayer() == Player.HUMAN || (button.getPiece().getPlayer() == Player.AI)) {
+//lấy danh sách các nước đi hợp lệ từ vị trí pos trên bàn cờ và lưu trữ danh sách này vào biến possibleMoves.
 				possibleMoves = game.getValidMoves(pos);
 
 				updateCheckerBoard();
@@ -451,8 +464,10 @@ public class GUI extends JFrame {
 		}
 	}
 
+//Xử lý các sự kiện được kích hoạt khi người dùng nhấp vào các nút "bóng ma".
 	private void onGhostButtonClick(ActionEvent actionEvent) {
-		if (!game.isGameOver() && game.getTurn() == Player.HUMAN) {
+		if (!game.isGameOver() && game.getTurn() == Player.HUMAN
+				|| (!game.isGameOver() && game.getTurn() == Player.AI)) {
 			hintMove = null;
 			helpMoves = null;
 
@@ -462,12 +477,10 @@ public class GUI extends JFrame {
 			possibleMoves = new ArrayList<>();
 
 			updateCheckerBoard();
-
+//đảm bảo mã trong phương thức run sẽ được thực thi trên luồng sự kiện của Swing sau khi các sự kiện hiện tại đã được xử lý.
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
-
-					aiMove();
 
 					if (game.isGameOver()) {
 						gameOver();
@@ -476,53 +489,9 @@ public class GUI extends JFrame {
 			});
 		}
 	}
-	
+
 	private void gameOver() {
 		JOptionPane.showMessageDialog(this, game.getGameOverMessage(), "", JOptionPane.INFORMATION_MESSAGE);
 	}
-	
-	private void aiMove() {
-
-		long startTime = System.nanoTime();
-
-		game.aiMove();
-		
-		long aiMoveDurationInMs = (System.nanoTime() - startTime) / 1000000;
-
-		long delayInMs = Math.max(0, main.gui.Settings.AiMinPauseDurationInMs - aiMoveDurationInMs);
-
-		ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-
-		exec.schedule(new Runnable() {
-			@Override
-
-			public void run() {
-				invokeAiUpdate();
-			}
-		}, delayInMs, TimeUnit.MILLISECONDS);
-	}
-
-	
-	private void invokeAiUpdate() {
-
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-
-				updateCheckerBoard();
-
-				if (!game.isGameOver() && game.getTurn() == Player.AI) {
-					aiMove();
-				} else if (main.gui.Settings.hintMode) {
-
-					onHintClick();
-				}
-			}
-		});
-	}
-
-	
-
-	
 
 }

@@ -1,7 +1,10 @@
 package main.gui;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+
+import javax.swing.JPanel;
 
 public class SquarePanel extends JPanel {
 
@@ -13,6 +16,7 @@ public class SquarePanel extends JPanel {
     	
         this.setPreferredSize(new Dimension(Settings.squareSize,Settings.squareSize));
         
+        // xác định màu sắc của ô vuông dựa trên vị trí của nó
        
         if( ((i % 2) + (j % 2)) % 2 == 0){
             color = hexToColor("#9E6B55");
@@ -41,5 +45,4 @@ public class SquarePanel extends JPanel {
         g.setColor(color);
         g.fillRect(0, 0, getWidth(), getHeight());
     }
-
 }
