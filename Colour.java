@@ -1,6 +1,6 @@
 package main.gui;
 
-//đại diện cho màu sắc của các quân cờ
+
 public enum Colour {
     WHITE,
     BLACK;
@@ -20,3 +20,4 @@ public enum Colour {
         return result;
     }
 }
+

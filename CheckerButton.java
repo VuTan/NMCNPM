@@ -12,7 +12,9 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JRadioButton;
 
+import main.game.AI;
 import main.game.Game;
 import main.game.Piece;
 import main.game.Player;
@@ -115,4 +117,3 @@ public class CheckerButton extends JButton {
 	}
 
 }
-
