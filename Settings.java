@@ -1,8 +1,6 @@
 package main.game;
 
 public class Settings {
-	
-	
 	public static boolean FORCETAKES = true;
 	
 

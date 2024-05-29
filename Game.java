@@ -3,26 +3,38 @@ package main.game;
 import java.util.ArrayList;
 import java.util.Stack;
 
+import main.gui.GUI;
+
 public class Game {
 
 	private Stack<BoardState> state;
 
 	private int memory;
 
+	private AI ai;
+
 	private boolean humanWon;
 
-	public Game() {
+	public Game(GUI s) {
 		memory = Settings.UNDO_MEMORY;
 		state = new Stack<>();
 		state.push(BoardState.InitialState());
+		ai = new AI();
+		new Thread(()->{
+			try {
+				Thread.sleep(2000);
+				s.setup();
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+		}).start();
+		
 	}
 
-	// thực hiện nước đi của người chơi
 	public void playerMove(BoardState newState) {
 
-		if (!isGameOver() && state.peek().getTurn() == Player.HUMAN
-				|| (!isGameOver() && state.peek().getTurn() == Player.AI)) {
-// cập nhật bằng trạng thái mới
+		if (!isGameOver() && state.peek().getTurn() == Player.HUMAN) {
+
 			updateState(newState);
 		}
 	}
@@ -86,13 +98,31 @@ public class Game {
 		}
 
 	}
-// ds trạng thái bàn cờ sau các bước đi hợp lệ.
+
 	public ArrayList<BoardState> getValidMoves(int pos) {
-//lấy ra trạng thái hiện tại của bàn cờ sau khi thực hiện các bước đi hợp lệ 
+
 		return state.peek().getSuccessors(pos);
 	}
 
-	// Cập nhật trạng thái của trò chơi
+	public void aiMove() {
+
+		if (!isGameOver() && state.peek().getTurn() == Player.AI) {
+			String selectedAlgorithm = Settings.SELECTED_ALGORITHM;
+
+			if ("minimax".equals(selectedAlgorithm)) {
+				BoardState newState = ai.move(this.state.peek(), Player.AI, selectedAlgorithm);
+				updateState(newState);
+			}else if ("alphabeta".equals(Settings.SELECTED_ALGORITHM1)) {
+					BoardState newState = ai.move(this.state.peek(), Player.AI, selectedAlgorithm);
+					updateState(newState);
+			}
+								
+			} else {
+				System.out.println("Thuật toán không hợp lệ");
+			}
+		}
+	
+
 	private void updateState(BoardState newState) {
 
 		state.push(newState);
@@ -107,17 +137,14 @@ public class Game {
 		}
 	}
 
-	// Trả về trạng thái hiện tại của trò chơi.
 	public BoardState getState() {
 		return state.peek();
 	}
 
-	// trả về lượt người chơi
 	public Player getTurn() {
 		return state.peek().getTurn();
 	}
 
-	// Kiểm tra xem trò chơi đã kết thúc chưa và trả về kết quả.
 	public boolean isGameOver() {
 
 		boolean isOver = state.peek().isGameOver();
@@ -129,7 +156,6 @@ public class Game {
 		return isOver;
 	}
 
-	// Trả về kết quả của trò chơi.
 	public String getGameOverMessage() {
 		String result = "Trò chơi kết thúc.";
 		if (humanWon == true) {
