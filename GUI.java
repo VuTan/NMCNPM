@@ -17,7 +17,7 @@ public class GUI extends JFrame {
 
 	private Game game;
 	private ArrayList<BoardState> possibleMoves;
-	private SquarePanel[] squares;
+	private Square[] squares;
 	private JPanel checkerboardPanel;
 	private JPanel contentPane;
 	private JTextArea textBox;
@@ -31,18 +31,13 @@ public class GUI extends JFrame {
 	private void start() {
 
 		settingsPopup();
-		game = new Game();
+		game = new Game(this); //initial game
 		possibleMoves = new ArrayList<>();
-
 		hintMove = null;
-
-		setup();
-
-		if (main.gui.Settings.hintMode) {
-			onHintClick();
-		}
 	}
 
+	
+	//
 	private void settingsPopup() {
 		
 		JPanel panel = new JPanel(new GridLayout(8, 1));
@@ -101,6 +96,8 @@ public class GUI extends JFrame {
 
 
 	public void setup() {
+		
+		//
 		switch (Settings.FIRSTMOVE) {
 		case AI:
 			main.gui.Settings.AIcolour = Colour.WHITE;
@@ -141,20 +138,19 @@ public class GUI extends JFrame {
 
 	private void updateCheckerBoard() {
 		checkerboardPanel.removeAll();
+		//--Huy
 		addPieces();
-
 		addSquares();
-
 		addGhostButtons();
 		checkerboardPanel.setVisible(true);
-
 		checkerboardPanel.repaint();
 		this.pack();
 		this.setVisible(true);
 	}
 	
+	//Chèn Square (Nền) vào bàn cờ --Huy
 	private void addSquares() {
-		squares = new SquarePanel[game.getState().NO_SQUARES];
+		squares = new Square[game.getState().NO_SQUARES];
 		int fromPos = -1;
 		int toPos = -1;
 		if (hintMove != null) {
@@ -168,7 +164,7 @@ public class GUI extends JFrame {
 			c.gridx = i % game.getState().SIDE_LENGTH;
 			c.gridy = i / game.getState().SIDE_LENGTH;
  
-			squares[i] = new SquarePanel(c.gridx, c.gridy);
+			squares[i] = new Square(c.gridx, c.gridy);
 			
 			if (i == fromPos) {
 				squares[i].setHighlighted();
@@ -186,7 +182,6 @@ public class GUI extends JFrame {
 		}
 	}
 
-	
 	private void addPieces() {
 	
 		GridBagConstraints c = new GridBagConstraints();
@@ -215,6 +210,7 @@ public class GUI extends JFrame {
 			}
 		}
 	}
+
 
 	private void addGhostButtons() {
 
@@ -364,7 +360,7 @@ public class GUI extends JFrame {
 				+ "7. Các vị vua di chuyển như quân nhưng có thể di chuyển cả về phía trước và phía sau. <br /> <br />"
 				+ "8. Vua có thể kết hợp các bước nhảy theo nhiều hướng, tiến và lùi trong cùng một lượt. Các quân đơn lẻ có thể chuyển hướng theo đường chéo trong một lượt bắt nhiều lần, nhưng phải luôn tiến về phía trước (về phía đối thủ).";
 
-		JOptionPane.showMessageDialog(this, "<html><body><p style='width: 400px;'>" + message + "</p></body></html>",
+		JOptionPane.showMessageDialog(this, "<html><body><p style='width: 400px'>" + message + "</p></body></html>",
 				"", JOptionPane.INFORMATION_MESSAGE);
 	}
 	
